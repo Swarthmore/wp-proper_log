@@ -1,0 +1,13 @@
+{
+    "name": "swarthmore/proper_log",
+    "description": "Logging plugin for use on WordPress sites",
+    "type": "project",
+    "require": {
+        "monolog/monolog": "^3.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "Swarthmore\\ProperLog\\": "src/"
+        }
+    }
+}
