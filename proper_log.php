@@ -118,15 +118,37 @@ function proper_log($args){
         $site_host = preg_replace('/^https?:\/\/(.+)$/', '$1', get_site_url());
     }
     $site_name = $site_host;
+
+    // Validate presence of expected keys to avoid notices
+    $hist_ip     = isset($args['hist_ip'])     ? $args['hist_ip']     : '';
+    $user_id     = isset($args['user_id'])     ? intval($args['user_id']) : 0;
+    $object_type = isset($args['object_type']) ? $args['object_type'] : '';
+    $action      = isset($args['action'])      ? $args['action']      : '';
+    $object_name = isset($args['object_name']) ? $args['object_name'] : '';
+    $object_id   = isset($args['object_id'])   ? $args['object_id']   : '';
+
     $log = array();
     $log[] = $site_name;
-    $log[] = $args['hist_ip'];
-    $uobj = get_user_by ('ID', $args['user_id']);
-    $log[] =  $args['user_id'] . (($uobj) ? " (" . $uobj->data->user_login . " - " . implode(", ", $uobj->roles) . ")" : "");
-    $log[] = $args['object_type'];
-    $log[] = $args['action'];
-    $log[] = $args['object_name'] .((empty($args['object_id'])) ? "" : " (ID: " . $args['object_id'] . ")");
-    $message = implode(" - ", $log) . "\n";
+    $log[] = $hist_ip;
+
+    // Build user info safely
+    $user_info = '';
+    if ($user_id) {
+        $uobj = get_user_by('ID', $user_id);
+        $user_info = (string)$user_id;
+        if ($uobj) {
+            $login = isset($uobj->data->user_login) ? $uobj->data->user_login : '';
+            $roles = isset($uobj->roles) ? implode(', ', $uobj->roles) : '';
+            $user_info .= ($login || $roles) ? " ({$login}" . ($roles ? " - {$roles}" : '') . ")" : '';
+        }
+    }
+    $log[] = $user_info;
+    $log[] = $object_type;
+    $log[] = $action;
+    $log[] = $object_name . ((string) $object_id === '' ? '' : " (ID: " . $object_id . ")");
+
+    // Remove empty segments so messages are cleaner
+    $message = implode(" - ", array_filter($log, function($v){ return $v !== '' && $v !== null; })) . "\n";
 
     $dest = get_option('proper_log_destination', 'syslog');
     $tag = get_option('proper_log_tag', 'ProperLog');
@@ -134,15 +156,15 @@ function proper_log($args){
     if ($dest === 'stdout') {
         // Try STDOUT constant first (CLI), otherwise use php://stdout
         $out_msg = $tag . ': ' . $message;
-      if (defined('STDOUT')) {
-          @fwrite(STDOUT, $out_msg);
-      } else {
-          $out = @fopen('php://stdout', 'w');
-          if ($out) {
-              @fwrite($out, $out_msg);
-              @fclose($out);
-          }
-      }
+        if (defined('STDOUT')) {
+            @fwrite(STDOUT, $out_msg);
+        } else {
+            $out = @fopen('php://stdout', 'w');
+            if ($out) {
+                @fwrite($out, $out_msg);
+                @fclose($out);
+            }
+        }
     } else {
         @openlog($tag, LOG_NDELAY, LOG_LOCAL0);
         @syslog(LOG_INFO, $message);
