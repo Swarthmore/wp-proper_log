@@ -1,28 +1,30 @@
 <?php
 /*
-Plugin Name: Proper Log
-Plugin URI: http://www.swarthmore.edu/its
-Description: Creates a real file based event log. Requires "Activity Log" @ https://wordpress.org/plugins/aryo-activity-log - Created out of Les Leach's frustration of WordPress' lack of logging capabilities
-*/
+ * Plugin Name: Proper Log
+ * Plugin URI: http://www.swarthmore.edu/its
+ * Description: Creates a real file based event log. Requires "Activity Log" @ https://wordpress.org/plugins/aryo-activity-log - Created out of Les Leach's frustration of WordPress' lack of logging capabilities
+ */
 
 add_action("aal_insert_log", "proper_log", 5, 1);
 
-// Ensure a default option is created on activation
+// Default plugin settings
 register_activation_hook(__FILE__, 'proper_log_activate');
 function proper_log_activate() {
+    // Ensure a default logging destination exists
     if (false === get_option('proper_log_destination')) {
         add_option('proper_log_destination', 'syslog');
     }
-    // Ensure a default tag exists
+    // Ensure a default logging tag exists
     if (false === get_option('proper_log_tag')) {
         add_option('proper_log_tag', 'ProperLog');
     }
 }
 
-/* --- Settings UI --- */
+// Settings UI
 add_action('admin_menu', 'proper_log_admin_menu');
 add_action('admin_init', 'proper_log_settings_init');
 
+// Add a "Settings" link on the Dashboard > Plugins page
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'proper_log_plugin_action_links');
 function proper_log_plugin_action_links($links) {
     $settings_link = '<a href="options-general.php?page=proper-log">Settings</a>';
@@ -30,6 +32,7 @@ function proper_log_plugin_action_links($links) {
     return $links;
 }
 
+// Admin menu for plugin settings
 function proper_log_admin_menu() {
     if (current_user_can('manage_options')) {
         add_options_page(
@@ -42,6 +45,7 @@ function proper_log_admin_menu() {
     }
 }
 
+// Settings initialization
 function proper_log_settings_init() {
     register_setting('proper_log', 'proper_log_destination', array(
         'sanitize_callback' => 'sanitize_text_field',
@@ -75,6 +79,7 @@ function proper_log_settings_init() {
     );
 }
 
+// Settings field renderers
 function proper_log_tag_field_render() {
     $val = get_option('proper_log_tag', 'ProperLog');
     ?>
@@ -91,6 +96,7 @@ function proper_log_destination_field_render() {
     <?php
 }
 
+// Options page
 function proper_log_options_page() {
     if (!current_user_can('manage_options')) {
         return;
@@ -109,7 +115,7 @@ function proper_log_options_page() {
     <?php
 }
 
-/* --- Logging --- */
+// Logging function
 function proper_log($args){
     // Prefer WP helper to parse the site URL host
     $site_host = wp_parse_url(get_site_url(), PHP_URL_HOST);
