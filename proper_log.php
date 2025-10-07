@@ -111,7 +111,13 @@ function proper_log_options_page() {
 
 /* --- Logging --- */
 function proper_log($args){
-    $site_name = preg_replace('/^https?:\/\/(.+)$/', "$1", get_site_url());
+    // Prefer WP helper to parse the site URL host
+    $site_host = wp_parse_url(get_site_url(), PHP_URL_HOST);
+    if (empty($site_host)) {
+        // fallback to regex if parsing fails
+        $site_host = preg_replace('/^https?:\/\/(.+)$/', '$1', get_site_url());
+    }
+    $site_name = $site_host;
     $log = array();
     $log[] = $site_name;
     $log[] = $args['hist_ip'];
