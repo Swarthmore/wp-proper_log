@@ -13,11 +13,22 @@ function proper_log_activate() {
     if (false === get_option('proper_log_destination')) {
         add_option('proper_log_destination', 'syslog');
     }
+    // Ensure a default tag exists
+    if (false === get_option('proper_log_tag')) {
+        add_option('proper_log_tag', 'ProperLog');
+    }
 }
 
 /* --- Settings UI --- */
 add_action('admin_menu', 'proper_log_admin_menu');
 add_action('admin_init', 'proper_log_settings_init');
+
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'proper_log_plugin_action_links');
+function proper_log_plugin_action_links($links) {
+    $settings_link = '<a href="options-general.php?page=proper-log">Settings</a>';
+    array_unshift($links, $settings_link);
+    return $links;
+}
 
 function proper_log_admin_menu() {
     if (current_user_can('manage_options')) {
@@ -36,6 +47,10 @@ function proper_log_settings_init() {
         'sanitize_callback' => 'sanitize_text_field',
         'default' => 'syslog',
     ));
+    register_setting('proper_log', 'proper_log_tag', array(
+        'sanitize_callback' => 'sanitize_text_field',
+        'default' => 'ProperLog',
+    ));
 
     add_settings_section(
         'proper_log_main_section',
@@ -51,6 +66,21 @@ function proper_log_settings_init() {
         'proper_log',
         'proper_log_main_section'
     );
+    add_settings_field(
+        'proper_log_tag_field',
+        'Log tag',
+        'proper_log_tag_field_render',
+        'proper_log',
+        'proper_log_main_section'
+    );
+}
+
+function proper_log_tag_field_render() {
+    $val = get_option('proper_log_tag', 'ProperLog');
+    ?>
+    <input type="text" name="proper_log_tag" value="<?php echo esc_attr($val); ?>" class="regular-text" />
+    <p class="description">Identifier prepended to stdout messages and used as the syslog ident (default: ProperLog).</p>
+    <?php
 }
 
 function proper_log_destination_field_render() {
@@ -93,7 +123,7 @@ function proper_log($args){
     $message = implode(" - ", $log) . "\n";
 
     $dest = get_option('proper_log_destination', 'syslog');
-    $tag = 'ProperLog';
+    $tag = get_option('proper_log_tag', 'ProperLog');
 
     if ($dest === 'stdout') {
         // Try STDOUT constant first (CLI), otherwise use php://stdout
